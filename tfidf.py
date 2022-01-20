@@ -8,12 +8,10 @@ import csv
 train_ners = load('data/final_train_cut_v3.joblib')
 test_ners = load('data/final_test_cut_v3.joblib')
 
-nerCorpus = []
-for ners in train_ners:
-    nerCorpus.append(' '.join(ners))
+nerCorpus = [' '.join(ners) for ners in train_ners]
 for ners in test_ners:
     nerCorpus.append(' '.join(ners))
-    
+
 tfIdf = TfidfVectorizer()
 tfIdf.fit(nerCorpus)
 

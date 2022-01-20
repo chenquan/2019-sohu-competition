@@ -16,7 +16,7 @@ from utils.nerdict import jieba_ner
 from sklearn.metrics import f1_score, recall_score, precision_score
 from sklearn.model_selection import train_test_split,GridSearchCV,RandomizedSearchCV   #Perforing grid search
 from collections import Counter
-from imblearn.over_sampling import SMOTE 
+from imblearn.over_sampling import SMOTE
 from utils.find_threshold import threshold_search
 from utils.easy_find_threshold import easy_threshold_search
 import importlib
@@ -45,18 +45,12 @@ classes = x_classes_list[:40000]
 i = -1
 c = 0
 for x in train_x_list:
-    if x[1] in bys:
-        byssmooth = bys[x[1]][0]
-    else:
-        byssmooth = np.nan
+    byssmooth = bys[x[1]][0] if x[1] in bys else np.nan
     if tmpid != x[0]:
         tmpid = x[0]
         i+=1
-        select_x.append(x[2:]+classes[i][1:]+[byssmooth])
-        select_ent_id.append(x[0:2])
-    else:
-        select_x.append(x[2:]+classes[i][1:]+[byssmooth])
-        select_ent_id.append(x[0:2])
+    select_x.append(x[2:]+classes[i][1:]+[byssmooth])
+    select_ent_id.append(x[:2])
 
 
 

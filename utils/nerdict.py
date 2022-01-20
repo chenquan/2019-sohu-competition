@@ -75,9 +75,7 @@ class jieba_ner():
         
     def get_stopwords(self):
         stopwordfile = open("./data/stopwords.txt")
-        self.stopwords = set()
-        for stp in stopwordfile:
-            self.stopwords.add(re.sub('\n','',stp))
+        self.stopwords = {re.sub('\n','',stp) for stp in stopwordfile}
             
     def returnstpwords(self):
         return self.stopwords
@@ -92,9 +90,6 @@ class jieba_ner():
     #全模式cut单个news用于预测
     def jieba_cut(self, news):
 
-        title = news['title']
-        content = news['content']
-        nerdict = set()
         ''' 惊了，做正则覆盖率降低了
         sentences = []
         for seq in re.split(r'[\n。，、：‘’“""”？！?!]', title+"，"+content):
@@ -102,14 +97,11 @@ class jieba_ner():
             if len(seq) > 2:
                 sentences.append(seq)
         '''       
-                
+
+        title = news['title']
+        content = news['content']
         #for seq in sentences:
         ner_list = self.jieba.cut(title+"，"+content)  #cut_for_search   cut_all = False
-        for ner in ner_list:
-            if len(ner) > 1:
-                if ner not in self.stopwords:  #去停用词
-                    nerdict.add(ner)
-        
-        return nerdict #set
+        return {ner for ner in ner_list if len(ner) > 1 and ner not in self.stopwords}
     
         

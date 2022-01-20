@@ -16,7 +16,7 @@ from utils.nerdict import jieba_ner
 from sklearn.metrics import f1_score, recall_score, precision_score
 from sklearn.model_selection import train_test_split,GridSearchCV,RandomizedSearchCV   #Perforing grid search
 from collections import Counter
-from imblearn.over_sampling import SMOTE 
+from imblearn.over_sampling import SMOTE
 from utils.find_threshold import threshold_search
 from utils.easy_find_threshold import easy_threshold_search
 import importlib
@@ -42,18 +42,12 @@ classes = x_classes_list[40000:]
 i = -1
 c = 0
 for x in tqdm(train_x_list):
-    if x[1] in bys:
-        byssmooth = bys[x[1]][0]
-    else:
-        byssmooth = np.nan
+    byssmooth = bys[x[1]][0] if x[1] in bys else np.nan
     if tmpid != x[0]:
         tmpid = x[0]
         i+=1
-        select_x.append(x[2:]+classes[i][1:]+[byssmooth])
-        select_ent_id.append(x[0:2])
-    else:
-        select_x.append(x[2:]+classes[i][1:]+[byssmooth])
-        select_ent_id.append(x[0:2])
+    select_x.append(x[2:]+classes[i][1:]+[byssmooth])
+    select_ent_id.append(x[:2])
 len(select_x)
 
 st = time.time()
@@ -65,11 +59,8 @@ print(et-st)
 
 
 def loadid(path):
-    res = []
     file = open(path)
-    for f in file:
-        res.append(json.loads(f)['newsId'])
-    return res
+    return [json.loads(f)['newsId'] for f in file]
 newsid = loadid('data/coreEntityEmotion_test_stage2.txt')
 
 #入袋
@@ -102,19 +93,16 @@ def test(bag_S, process_num):
 
     # print(pd.DataFrame({'column': feature_names,'importance': ents_model.feature_importance(),}).sort_values(by='importance',
     #                                                                                                               ascending=False))
-    
-    stopwordfile = open("./data/stopwords.txt")
-    stopwords = set()
-    for stp in stopwordfile:
-        stopwords.add(re.sub('\n','',stp))
 
+    stopwordfile = open("./data/stopwords.txt")
+    stopwords = {re.sub('\n','',stp) for stp in stopwordfile}
     count = 0
     has_num = 0
     tal_num = 0
     resX = []
     resY = []
     starttflag = 0
-    
+
     tmp = {}
     newalre=[]
     with open("./results_final/result_"+str(process_num)+".txt","w",encoding="utf-8") as w:
@@ -124,30 +112,23 @@ def test(bag_S, process_num):
     #             break
             if count >= 0:
                 news = json.loads(news)
-                ents = []
-                emos = []
                 #预测实体
-                ent_predict_result = []
-                for s in score:
-                    ent_predict_result.append([s[0],s[1]])
+                ent_predict_result = [[s[0],s[1]] for s in score]
                 ent_predict_result.sort(key=lambda x: x[1], reverse = True)
 
-                 #筛选实体
                 c = 0
                 try:
                     tops = ent_predict_result[0][1]
                 except:
                     pass
+                ents = []
                 for pred in ent_predict_result:
-                    if c == 0:
-                        if  pred[1] < 0:
-                            break
-                    if c == 1:
-                        if pred[1] < tops*0.5 or pred[1] < 0.28:
-                            break
-                    if c == 2:
-                        if pred[1] < tops*0.5 or pred[1]< 0.30:
-                            break    
+                    if c == 0 and pred[1] < 0:
+                        break
+                    if c == 1 and (pred[1] < tops * 0.5 or pred[1] < 0.28):
+                        break
+                    if c == 2 and (pred[1] < tops * 0.5 or pred[1] < 0.30):
+                        break
                     if c == 3:
                         break
                     flag = 0
@@ -179,9 +160,7 @@ def test(bag_S, process_num):
                         tmp[e] += 1
                     else:
                         tmp[e] = 1
-                #预测情感
-                for ent in ents:
-                    emos.append("POS")
+                emos = ["POS" for _ in ents]
                 newalre.append(ents)
 #                 print(ent_predict_result[:6])
 #                 print(ents,news['title'])
@@ -192,31 +171,16 @@ def test(bag_S, process_num):
         if len(n) == 0:
             c1 +=1
     print('0 =',c1)
-    c1 = 0
-    for n in newalre:
-        if len(n) == 1:
-            c1 +=1
+    c1 = sum(len(n) == 1 for n in newalre)
     print('1 =',c1)
-    c1 = 0
-    for n in newalre:
-        if len(n) == 2:
-            c1 +=1
+    c1 = sum(len(n) == 2 for n in newalre)
     print('2 =',c1)
-    c1 = 0
-    for n in newalre:
-        if len(n) == 3:
-            c1 +=1
+    c1 = sum(len(n) == 3 for n in newalre)
     print('3 =',c1)
-    c1 = 0
-    for n in newalre:
-        if len(n) > 3:
-            c1 +=1
+    c1 = sum(len(n) > 3 for n in newalre)
     print('>3 =',c1)
-    c1 = 0
-    for n in newalre:
-        if len(n) == 4:
-            c1 +=1
-    print('4 =',c1)       
+    c1 = sum(len(n) == 4 for n in newalre)
+    print('4 =',c1)
     print("done")
 #     print(sorted(tmp.items(),key=lambda item: item[1],reverse=True))
 

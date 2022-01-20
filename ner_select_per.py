@@ -30,24 +30,17 @@ test_file = open(test_file)
 for news in tqdm(test_file):
     news = json.loads(news)
     Y_ents_emos = news['coreEntityEmotions']
-    Y_ents = []
-    for y in Y_ents_emos:
-        Y_ents.append(y['entity'])
+    Y_ents = [y['entity'] for y in Y_ents_emos]
     all_Y_ents.append(Y_ents)
     
 def loadData(path):
-    res = []
     file = open(path)
-    for f in file:
-        res.append(json.loads(f))
-    return res
+    return [json.loads(f) for f in file]
 
-count = 0
 # ners_appear_times = {}   #自己的分词出现的次数
 ners_select_times = {}   #实体被当做真实实体的次数
 ners_select_per = {}     #实体被当做真实实体的概率
 for Y_ents in all_Y_ents:
-    count+=1
     for ent in Y_ents:
         if ners_appear_times[ent] == 0:
             print(ent)
@@ -84,7 +77,7 @@ class BayesianSmoothing(object):
 
     def update(self, imps, clks, iter_num, epsilon):
 
-        for i in range(iter_num):
+        for _ in range(iter_num):
             new_alpha, new_beta = self.__fixed_point_iteration(imps, clks, self.alpha, self.beta)
             if abs(new_alpha - self.alpha) < epsilon and abs(new_beta - self.beta) < epsilon:
                 break
@@ -96,7 +89,7 @@ class BayesianSmoothing(object):
         numerator_beta = 0.0
         denominator = 0.0
 #         print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-        for i in range(0, len(imps), 1):    # 步长复用时去掉
+        for i in range(len(imps)):    # 步长复用时去掉
             numerator_alpha += (special.digamma(clks[i] + alpha) - special.digamma(alpha))
             numerator_beta += (special.digamma(imps[i] - clks[i] + beta) - special.digamma(beta))
             denominator += (special.digamma(imps[i] + alpha + beta) - special.digamma(alpha + beta))
@@ -105,18 +98,14 @@ def bys(I, C):
     bs = BayesianSmoothing(1, 1)
     # I, C = bs.sample(500, 500, 10, 1000)
     bs.update(I, C, 1000, 0.00001)   #
-#     print(bs.alpha, bs.beta)
-    ctr = []
-    for i in range(len(I)):
-        ctr.append((C[i] + bs.alpha) / (I[i] + bs.alpha + bs.beta))
-    return ctr
+    return [(C[i] + bs.alpha) / (I[i] + bs.alpha + bs.beta) for i in range(len(I))]
 
-bys_ctr = {}
-for ent in tqdm(ners_select_times):
-    if ners_select_times[ent] > 9:
-        bys_ctr[ent] = bys([ners_select_times[ent]],[ners_select_per[ent]])
-    
-    
+bys_ctr = {
+    ent: bys([ners_select_times[ent]], [ners_select_per[ent]])
+    for ent in tqdm(ners_select_times)
+    if ners_select_times[ent] > 9
+}
+
 dump(bys_ctr,'features/bys_ctr_10.joblib')   
     
     

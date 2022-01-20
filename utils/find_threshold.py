@@ -4,7 +4,7 @@ from tqdm import tqdm
 def threshold_search(y_true, y_pred, y_probability, n):
     # 预存最佳的阈值和f1_score
     best_score = -1
-    for threshold1 in [i * 0.1 for i in range(0,1)]:
+    for threshold1 in [i * 0.1 for i in range(1)]:
         for threshold2 in [i * 0.1 for i in range(2,5)]:
             for threshold3 in [i * 0.1 for i in range(2,5)]:
                 for threshold4 in [i * 0.1 for i in range(1,4)]:
@@ -14,37 +14,34 @@ def threshold_search(y_true, y_pred, y_probability, n):
                         pred_metric = []
                         true_metric = []
                         for true, pred, proba in zip(y_true,y_pred,y_probability):
-                            ents = []
-                            Y_ents = []
                             c = 0
                             try:
                                 tops = proba[0]
                             except:
                                 tops = 1
+                            ents = []
                             for ped, prba in zip(pred, proba):
                                 if c == n:
                                     break
-                                if c==0:
+                                if c == 0:
                                     if  prba < threshold1:
                                         break
-                                if c==1:
+                                elif c == 1:
                                     if prba< tops*threshold2 or prba < threshold4:
                                         break
-                                if c==2:
+                                elif c == 2:
                                     if prba <  tops*threshold3 or prba< threshold5:
                                         break
                                 ents.append(ped)
-                                c += 1 
-                            for y in true:
-                                Y_ents.append(y)
+                                c += 1
+                            Y_ents = list(true)
                             #模型评估
                             for pred in ents:
                                 if pred in Y_ents: #TP
-                                    pred_metric.append(1)
                                     true_metric.append(1)
                                 else:              #FP
-                                    pred_metric.append(1) 
                                     true_metric.append(0)
+                                pred_metric.append(1)
                             for y in Y_ents:       #FN
                                 if y not in ents:
                                     pred_metric.append(0)

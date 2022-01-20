@@ -18,11 +18,8 @@ from collections import Counter
 from imblearn.over_sampling import SMOTE 
 
 def loadData(path):
-    res = []
     file = open(path)
-    for f in file:
-        res.append(json.loads(f))
-    return res
+    return [json.loads(f) for f in file]
 
 
 

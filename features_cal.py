@@ -22,11 +22,8 @@ train_ners = load('data/final_train_cut_v3.joblib')
 test_ners = load('data/final_test_cut_v3.joblib')
 
 def loadData(path):
-    res = []
     file = open(path)
-    for f in file:
-        res.append(json.loads(f))
-    return res
+    return [json.loads(f) for f in file]
 
 #训练集特征
 def worker(startnum, endnum, processnum):
@@ -54,7 +51,7 @@ def worker(startnum, endnum, processnum):
 
 process = []
 count = 0
-for i in range(0,40001):
+for i in range(40001):
     if i > 0 and i % 5000 == 0:
         p = multiprocessing.Process(target=worker, args=(i-5000+1, i+1, i, ))
         process.append(p)
@@ -91,7 +88,7 @@ def worker(startnum, endnum, processnum):
 
 process2 = []
 count = 0
-for i in range(0,80001):
+for i in range(80001):
     if i > 0 and i % 5000 == 0:
         p = multiprocessing.Process(target=worker, args=(i-5000+1, i+1, i, ))
         process.append(p)

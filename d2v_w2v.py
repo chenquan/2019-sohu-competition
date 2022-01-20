@@ -39,9 +39,7 @@ process_num = 0
 process_news = []
 result_csv = []
 
-texts = []
-for ners in tqdm(test_ners):
-    texts.append(ners)
+texts = list(tqdm(test_ners))
 for ners in tqdm(train_ners):
     texts.append(ners)
 print("开始")

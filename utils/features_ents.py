@@ -82,11 +82,6 @@ class feature_ents():
     
     # textrank分数 和 tfidf分数
     def get_tr_Score(self, news):
-        title = news['title']
-        content = news['content']
-        article = title+ '，'+content
-        text_rank = {}
-        trindex = {}
         all_pro = ['a', 'ad', 'ag', 'an', 'b', 'c', 'd',
             'df', 'dg', 'e', 'eng', 'f', 'g', 'h',
             'i', 'j', 'k', 'l', 'm', 'mg', 'mq',
@@ -98,20 +93,21 @@ class feature_ents():
             'v', 'vd', 'vg', 'vi',
             'vn', 'vq', 'w', 'x', 
             'y', 'z', 'zg']
-        for name, score in self.jieba.analyse.textrank(article, topK=1200, withWeight=True, allowPOS=all_pro):
-            text_rank[name] = score
+        title = news['title']
+        content = news['content']
+        article = title+ '，'+content
+        text_rank = dict(
+            self.jieba.analyse.textrank(
+                article, topK=1200, withWeight=True, allowPOS=all_pro
+            )
+        )
+
         sorted(text_rank,reverse=True)
-        rank = 0
-        for ner in text_rank:
-            trindex[ner] = rank
-            rank += 1
-            
+        trindex = {ner: rank for rank, ner in enumerate(text_rank)}
         return text_rank, trindex
     
     # Tfidf分数 sklearn 和tfidfindex
     def get_tfidf_Score(self):
-        tfidfindex = {}
-        tfIdfNameScore = {}
         tfIdf = self.tfIdf
         tfIdfFeatures = tfIdf.transform([' '.join(self.ners)])
         tfIdfScores = tfIdfFeatures.data
@@ -119,15 +115,14 @@ class feature_ents():
         tfIdfScoresNorm = [[]]
         if len(tfIdfScores) > 0:
             tfIdfScoresNorm = normalize([tfIdfScores], norm='max')
-        
-        for name, score in zip(tfIdfFeatures.indices, tfIdfScoresNorm[0]):
-            tfIdfNameScore[self.featureName[name]] = score
+
+        tfIdfNameScore = {
+            self.featureName[name]: score
+            for name, score in zip(tfIdfFeatures.indices, tfIdfScoresNorm[0])
+        }
+
         NameScore = sorted(tfIdfNameScore.items(), key=lambda item: item[1], reverse=True)
-        rank = 0
-        for NS in NameScore:
-            tfidfindex[NS[0]] = rank
-            rank += 1
-        
+        tfidfindex = {NS[0]: rank for rank, NS in enumerate(NameScore)}
         return tfIdfNameScore, tfidfindex
     
     # word2vec 和 doc2vec的余弦距离和欧式距离
@@ -146,7 +141,7 @@ class feature_ents():
         #mid = {}  #中间
         freq_ent = {} #词被选为实体的次数（在训练集统计）
         ners_select_per = {} #词被选为实体的概率 （在训练集统计）
-        
+
         iit = {} #是否在标题
         word_dis = {} #词跨度
         word_dis_index = {}
@@ -158,33 +153,26 @@ class feature_ents():
         has_en = {} #有英文
         tfindex = {}  #词频排名
         baohan = {} #是否被包含
-        
+
         pattern_num = re.compile('[0-9]+')
         pattern_en = re.compile('[a-zA-z]+')
         title = news['title']
         content = news['content']
         article = title+ ' '+content
         maxd = 0
-        
+
         for ner in self.ners:
             baohan[ner] = 0
             for n in self.ners:
                 if ner in n and len(ner)<len(n):
                     baohan[ner] = 1
                     break
-            
-            if pattern_num.findall(ner):
-                has_num[ner] = 1
-            else:
-                has_num[ner] = 0
-            if pattern_en.findall(ner):
-                has_en[ner] = 1
-            else:
-                has_en[ner] = 0
-            
+
+            has_num[ner] = 1 if pattern_num.findall(ner) else 0
+            has_en[ner] = 1 if pattern_en.findall(ner) else 0
             if ner in self.wv:
                 cos[ner], eud[ner] = self.w2v_d2v(self.wv[ner], self.doc_vec)
-            
+
             tf[ner] = article.count(ner)
             tf_bi_len[ner] = tf[ner] / (len(self.ners)+1)
             '''if ner in self.ners_select_per:
@@ -192,23 +180,14 @@ class feature_ents():
                 
             if ner in self.freq_ent:
                 freq_ent[ner] = self.freq_ent[ner]'''
-            
+
             d = content.rfind(ner)-content.find(ner)
             word_dis[ner] = d/len(content)
-            
-            if ner in title:
-                iit[ner] = 1
-            else:
-                iit[ner] = 0
-            if ner in news["content"].split("。")[0]:
-                first[ner] = 1
-            else:
-                first[ner] = 0
+
+            iit[ner] = 1 if ner in title else 0
+            first[ner] = 1 if ner in news["content"].split("。")[0] else 0
             if len(news["content"].split("。"))>1:
-                if ner in news["content"].split("。")[-2]:
-                    last[ner] = 1
-                else:
-                    last[ner] = 0
+                last[ner] = 1 if ner in news["content"].split("。")[-2] else 0
             else:
                 last[ner] = 0
         #tfindex
@@ -221,11 +200,9 @@ class feature_ents():
                 tmprank = rank
                 tmprankscore = ns[1]
                 tfindex[ns[0]] = rank
-                rank += 1
             else:
                 tfindex[ns[0]] = tmprank
-                rank += 1
-                
+            rank += 1
         wdns = sorted(word_dis.items(), key=lambda item: item[1], reverse=True)
         rank = 0
         tmprank = 0
@@ -235,11 +212,9 @@ class feature_ents():
                 tmprank = rank
                 tmprankscore = ns[1]
                 word_dis_index[ns[0]] = rank
-                rank += 1
             else:
                 word_dis_index[ns[0]] = tmprank
-                rank += 1
-         
+            rank += 1
         '''topeud = 0
         for e in eud:
             if eud[e] > topeud:
@@ -247,7 +222,7 @@ class feature_ents():
         if topeud != 0:
             for e in eud:
                 eud[e] = eud[e]/topeud'''
-       
+
         '''#中间
         if len(sentence) > 2:
             for sent in sentence[1:len(sentence)-1]:
@@ -262,7 +237,7 @@ class feature_ents():
         var_gongxian = {}  #方差
         kurt_gongxian = {}  #峰度
         diff_min_gongxian = {}
-    
+
         sentences = [news['title']]
         for seq in re.split(r'[\n。？！?!.]', news['content']):
             # 如果开头不是汉子、字母或数字，则去除
@@ -276,13 +251,14 @@ class feature_ents():
         # 得到共现矩阵
         for i in range(num_tokens):
             for j in range(i+1, num_tokens):
-                count = 0 
-                for sentence in sentences:
-                    if words_list[i] in sentence and words_list[j] in sentence:
-                        count += 1 
+                count = sum(
+                    words_list[i] in sentence and words_list[j] in sentence
+                    for sentence in sentences
+                )
+
                 arr[i, j] = count
                 arr[j, i] = count
-                
+
         skearr = stats.skew(arr)
         for i in range(num_tokens):
             ske[words_list[i]] = skearr[i]
@@ -291,7 +267,7 @@ class feature_ents():
             diff_sim = np.diff(arr[i])
             if len(diff_sim) > 0:
                 diff_min_gongxian[words_list[i]] = np.min(diff_sim)
-      
+
         return ske, var_gongxian, kurt_gongxian, diff_min_gongxian
     
         
@@ -304,7 +280,7 @@ class feature_ents():
         diff_mean_sim_tags = {}
         diff_skew_sim_tags = {}
         diff_kurt_sim_tags = {}
-        
+
         num_tokens = len(self.ners)
         words_list = list(self.ners)
         sim_tags_arr = np.zeros((num_tokens, num_tokens))
@@ -315,9 +291,7 @@ class feature_ents():
                 if i != j:
                     sim_tags_arr[j][i] = sim_tags_arr[i][j]
         # 计算单词相似度矩阵的统计信息
-        tmp = {}
-        ## 相似度平均值
-        tmp['mean_sim_tags'] = np.mean(sim_tags_arr, axis=0)
+        tmp = {'mean_sim_tags': np.mean(sim_tags_arr, axis=0)}
         ## 相似度矩阵的偏度
         tmp['skew_sim_tags'] = stats.skew(sim_tags_arr, axis=0)
         ## 相似度矩阵的峰值
@@ -328,7 +302,7 @@ class feature_ents():
         tmp['diff_skew_sim_tags'] = stats.skew(np.diff(sim_tags_arr, axis=0), axis=0)
         ## 相似度矩阵差分的峰度
         tmp['diff_kurt_sim_tags'] = stats.kurtosis(np.diff(sim_tags_arr, axis=0), axis=0)
-        
+
         for i in range(num_tokens):
             mean_sim_tags[words_list[i]] = tmp['mean_sim_tags'][i]
             skew_sim_tags[words_list[i]] = tmp['skew_sim_tags'][i]
@@ -341,7 +315,7 @@ class feature_ents():
                 print("fea_ents第338行报错了")
                 diff_skew_sim_tags[words_list[i]] = np.nan
                 diff_kurt_sim_tags[words_list[i]] = np.nan
-            
+
         return mean_sim_tags, skew_sim_tags, kurt_sim_tags, diff_mean_sim_tags, diff_skew_sim_tags, diff_kurt_sim_tags
 
      #  词性
@@ -350,11 +324,9 @@ class feature_ents():
             nertype = next(self.pseg.cut(ner)).flag
         except:
             nertype = 'wz'
-        if nertype in self.nertype_encoder:
-            return self.nertype_encoder[nertype]
-        else:
+        if nertype not in self.nertype_encoder:
             self.nertype_encoder[nertype] = len(self.nertype_encoder)
-            return self.nertype_encoder[nertype]
+        return self.nertype_encoder[nertype]
         
 
     
@@ -365,12 +337,10 @@ class feature_ents():
         features = []
         result = pd.DataFrame()
         for ner in self.ners:
-            x = {}
-            tmp = []      
-            x['ske']=np.nan
+            x = {'ske': np.nan}
             x['var_gongxian']=x['kurt_gongxian']=x['diff_min_gongixna']=np.nan
             x['mean_sim_tags']=x['skew_sim_tags']=x['kurt_sim_tags']=x['diff_mean_sim_tags']= x['diff_skew_sim_tags']=x['mean_sim_tags']=np.nan
-            
+
             x['newsid'] = news['newsId']
             x['ner'] = ner
             if ner in ske:
@@ -381,7 +351,7 @@ class feature_ents():
                 x['kurt_gongxian'] = kurt_gongxian[ner]
             if ner in diff_min_gongixna:
                 x['diff_min_gongixna'] = diff_min_gongixna[ner]
-                
+
             if ner in mean_sim_tags:
                 x['mean_sim_tags'] = mean_sim_tags[ner]
             if ner in skew_sim_tags:
@@ -394,9 +364,22 @@ class feature_ents():
                 x['diff_skew_sim_tags'] = diff_skew_sim_tags[ner]
             if ner in diff_kurt_sim_tags:
                 x['diff_kurt_sim_tags'] = diff_kurt_sim_tags[ner]
-            
-            tmp.append([x['ske'], x['var_gongxian'], x['kurt_gongxian'], x['diff_min_gongixna'], x['mean_sim_tags'],x['skew_sim_tags'],x['kurt_sim_tags'],x['diff_mean_sim_tags'],x['diff_skew_sim_tags'],x['diff_kurt_sim_tags']])
-            
+
+            tmp = [
+                [
+                    x['ske'],
+                    x['var_gongxian'],
+                    x['kurt_gongxian'],
+                    x['diff_min_gongixna'],
+                    x['mean_sim_tags'],
+                    x['skew_sim_tags'],
+                    x['kurt_sim_tags'],
+                    x['diff_mean_sim_tags'],
+                    x['diff_skew_sim_tags'],
+                    x['diff_kurt_sim_tags'],
+                ]
+            ]
+
             df=pd.DataFrame(tmp,columns=["ske","var_gongxian","kurt_gongxian","diff_min_gongixna", "mean_sim_tags","skew_sim_tags","kurt_sim_tags","diff_mean_sim_tags","diff_skew_sim_tags","diff_kurt_sim_tags"])
             result=pd.concat([result,df],axis=0)
         return result
